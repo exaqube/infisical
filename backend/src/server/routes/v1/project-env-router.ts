@@ -46,7 +46,8 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
-        id: req.params.envId
+        id: req.params.envId,
+        projectId: req.params.projectId
       });
 
       await server.services.auditLog.createAuditLog({

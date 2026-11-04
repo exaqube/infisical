@@ -29,6 +29,7 @@ export type TReorderEnvDTO = {
 
 export type TGetEnvDTO = {
   id: string;
+  projectId?: string;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TGetEnvBySlugDTO = {

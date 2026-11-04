@@ -25,7 +25,6 @@ export const registerDeprecatedProjectEnvRouter = async (server: FastifyZodProvi
         }
       ],
       params: z.object({
-        // NOTE(daniel): workspaceId isn't used, but we need to keep it for backwards compatibility. The endpoint defined below, uses no project ID, and is takes a pure environment ID.
         workspaceId: z.string().trim().describe(ENVIRONMENTS.GET.projectId),
         envId: z.string().trim().describe(ENVIRONMENTS.GET.id)
       }),
@@ -42,7 +41,8 @@ export const registerDeprecatedProjectEnvRouter = async (server: FastifyZodProvi
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
-        id: req.params.envId
+        id: req.params.envId,
+        projectId: req.params.workspaceId
       });
 
       await server.services.auditLog.createAuditLog({
