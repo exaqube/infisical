@@ -4,7 +4,8 @@ import slugify from "@sindresorhus/slugify";
 import { AccessScope, OrganizationActionScope, OrgMembershipRole, OrgMembershipStatus } from "@app/db/schemas";
 import { bootstrapAgentVaultProject } from "@app/ee/services/agent-vault-project/agent-vault-project-bootstrap";
 import { bootstrapPamProject } from "@app/ee/services/pam-project/pam-project-bootstrap";
-import { BadRequestError } from "@app/lib/errors";
+import { getConfig } from "@app/lib/config/env";
+import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
 import { bootstrapCertManagerProject } from "@app/services/cert-manager-instance/cert-manager-project-bootstrap";
 import { TCertificatePolicyDALFactory } from "@app/services/certificate-policy/certificate-policy-dal";
@@ -13,6 +14,7 @@ import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
+import { isOrgCreatorIdentity } from "@app/services/org-creator/org-creator-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { TLicenseServiceFactory } from "../license/license-service";
@@ -62,7 +64,7 @@ export const subOrgServiceFactory = ({
     );
 
     const orgLicensePlan = await licenseService.getPlan(permission.rootOrgId);
-    if (!orgLicensePlan.subOrganization) {
+    if (getConfig().isCloud && !orgLicensePlan.subOrganization) {
       throw new BadRequestError({
         message: "Sub-organization creation failed. Please upgrade your instance to Infisical's Enterprise plan."
       });
@@ -245,7 +247,7 @@ export const subOrgServiceFactory = ({
 
   const joinSubOrg = async ({ subOrgId, permission }: TJoinSubOrgDTO) => {
     const orgLicensePlan = await licenseService.getPlan(permission.rootOrgId);
-    if (!orgLicensePlan.subOrganization) {
+    if (getConfig().isCloud && !orgLicensePlan.subOrganization) {
       throw new BadRequestError({
         message:
           "Sub-organization feature is not available. Please upgrade your instance to Infisical's Enterprise plan."
@@ -309,6 +311,10 @@ export const subOrgServiceFactory = ({
   };
 
   const deleteSubOrg = async ({ subOrgId, permission }: TDeleteSubOrgDTO) => {
+    if (permission.type === ActorType.IDENTITY && (await isOrgCreatorIdentity(permission.id))) {
+      throw new ForbiddenRequestError({ message: "Organization creator identities cannot delete organizations" });
+    }
+
     const subOrg = await orgDAL.findOne({
       rootOrgId: permission.rootOrgId,
       id: subOrgId

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import {
+  BuildingIcon,
   EllipsisVerticalIcon,
   SearchIcon,
   ServerCogIcon,
@@ -37,7 +38,10 @@ import {
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
 import { useDebounce, usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
-import { useAdminRemoveIdentitySuperAdminAccess } from "@app/hooks/api/admin";
+import {
+  useAdminRemoveIdentitySuperAdminAccess,
+  useAdminSetIdentityOrgCreatorAccess
+} from "@app/hooks/api/admin";
 import { useAdminGetIdentities } from "@app/hooks/api/admin/queries";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 import { ConfirmActionDialog } from "@app/pages/admin/components/ConfirmActionDialog";
@@ -47,10 +51,11 @@ const IdentityPanelTable = ({
   handlePopUpOpen
 }: {
   handlePopUpOpen: (
-    popUpName: keyof UsePopUpState<["removeServerAdmin"]>,
+    popUpName: keyof UsePopUpState<["removeServerAdmin", "toggleOrgCreator"]>,
     data?: {
       name: string;
       id: string;
+      canCreateOrganizations?: boolean;
     }
   ) => void;
 }) => {
@@ -113,7 +118,7 @@ const IdentityPanelTable = ({
             <TableBody>
               {isPending && <V3TableSkeleton columns={2} name="identities" />}
               {!isPending &&
-                identities?.map(({ name, id, isInstanceAdmin }) => (
+                identities?.map(({ name, id, isInstanceAdmin, canCreateOrganizations }) => (
                   <TableRow key={`identity-${id}`} className="w-full">
                     <TableCell>
                       {name}
@@ -123,17 +128,38 @@ const IdentityPanelTable = ({
                           Server Admin
                         </Badge>
                       )}
+                      {canCreateOrganizations && (
+                        <Badge variant="neutral" className="ml-2">
+                          <BuildingIcon />
+                          Org Creator
+                        </Badge>
+                      )}
                     </TableCell>
                     <TableCell variant="action">
-                      {isInstanceAdmin && (
-                        <div className="flex justify-end">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <IconButton aria-label="Options" size="xs" variant="ghost">
-                                <EllipsisVerticalIcon />
-                              </IconButton>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent sideOffset={2} align="end">
+                      <div className="flex justify-end">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <IconButton aria-label="Options" size="xs" variant="ghost">
+                              <EllipsisVerticalIcon />
+                            </IconButton>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent sideOffset={2} align="end">
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handlePopUpOpen("toggleOrgCreator", {
+                                  name,
+                                  id,
+                                  canCreateOrganizations
+                                });
+                              }}
+                            >
+                              <BuildingIcon />
+                              {canCreateOrganizations
+                                ? "Revoke Organization Creation"
+                                : "Allow Organization Creation"}
+                            </DropdownMenuItem>
+                            {isInstanceAdmin && (
                               <DropdownMenuItem
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -146,10 +172,10 @@ const IdentityPanelTable = ({
                                 <ShieldXIcon />
                                 Remove Server Admin
                               </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      )}
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -175,10 +201,30 @@ const IdentityPanelTable = ({
 
 export const MachineIdentitiesTable = () => {
   const { handlePopUpToggle, popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
-    "removeServerAdmin"
+    "removeServerAdmin",
+    "toggleOrgCreator"
   ] as const);
 
   const { mutateAsync: deleteIdentitySuperAdminAccess } = useAdminRemoveIdentitySuperAdminAccess();
+  const { mutateAsync: setOrgCreatorAccess } = useAdminSetIdentityOrgCreatorAccess();
+
+  const orgCreatorTarget = popUp?.toggleOrgCreator?.data as
+    | { id: string; name: string; canCreateOrganizations?: boolean }
+    | undefined;
+
+  const handleToggleOrgCreator = async () => {
+    if (!orgCreatorTarget) return;
+    const canCreate = !orgCreatorTarget.canCreateOrganizations;
+    await setOrgCreatorAccess({ identityId: orgCreatorTarget.id, canCreate });
+    createNotification({
+      type: "success",
+      text: canCreate
+        ? "Machine identity can now create organizations"
+        : "Machine identity can no longer create organizations"
+    });
+
+    handlePopUpClose("toggleOrgCreator");
+  };
 
   const handleRemoveServerAdmin = async () => {
     const { id } = popUp?.removeServerAdmin?.data as {
@@ -214,6 +260,19 @@ export const MachineIdentitiesTable = () => {
         description="You can grant Server Admin access again later."
         onConfirm={handleRemoveServerAdmin}
         confirmLabel="Remove Access"
+      />
+      <ConfirmActionDialog
+        isOpen={popUp.toggleOrgCreator.isOpen}
+        title={
+          orgCreatorTarget?.canCreateOrganizations
+            ? `Stop ${orgCreatorTarget?.name || ""} from creating organizations?`
+            : `Allow ${orgCreatorTarget?.name || ""} to create organizations?`
+        }
+        onOpenChange={(isOpen) => handlePopUpToggle("toggleOrgCreator", isOpen)}
+        confirmationKey="confirm"
+        description="An organization creator can create top-level organizations and list the ones it created through the API. It can never delete an organization. Organizations it already created are not affected."
+        onConfirm={handleToggleOrgCreator}
+        confirmLabel={orgCreatorTarget?.canCreateOrganizations ? "Revoke" : "Allow"}
       />
     </Card>
   );

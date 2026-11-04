@@ -1035,6 +1035,18 @@ export const SUB_ORGANIZATIONS = {
   }
 } as const;
 
+export const ORGANIZATIONS_CREATED_BY_IDENTITY = {
+  CREATE: {
+    name: "The display name of the organization (e.g. 'Acme Corp'). Allows alphanumeric characters, spaces, dashes, and underscores.",
+    slug: "Optional. The slug of the organization (e.g. 'acme-corp'). Defaults to the name, lowercased and hyphenated. A repeated request with the same slug or name returns the organization this identity already created."
+  },
+  LIST: {
+    createdBy: "Must be 'me': returns the organizations created by the calling machine identity.",
+    limit: "The number of organizations to return.",
+    offset: "The offset to start from. If you enter 10, it will start from the 10th organization."
+  }
+} as const;
+
 export const PROJECTS = {
   CREATE: {
     organizationSlug: "The slug of the organization to create the project in.",

@@ -1184,7 +1184,8 @@ export const superAdminServiceFactory = ({
     return {
       identities: result.identities.map((identity) => ({
         ...identity,
-        isInstanceAdmin: Boolean(serverCfg?.adminIdentityIds?.includes(identity.id))
+        isInstanceAdmin: Boolean(serverCfg?.adminIdentityIds?.includes(identity.id)),
+        canCreateOrganizations: Boolean(serverCfg?.orgCreatorIdentityIds?.includes(identity.id))
       })),
       total: result.total
     };

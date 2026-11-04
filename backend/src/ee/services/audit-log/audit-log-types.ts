@@ -222,6 +222,7 @@ export enum EventType {
   DELETE_SERVICE_TOKEN = "delete-service-token", // v2
 
   CREATE_SUB_ORGANIZATION = "create-sub-organization",
+  CREATE_ORGANIZATION = "create-organization",
   UPDATE_SUB_ORGANIZATION = "update-sub-organization",
   DELETE_SUB_ORGANIZATION = "delete-sub-organization",
   JOIN_SUB_ORGANIZATION = "join-sub-organization",
@@ -1150,6 +1151,18 @@ interface GetSecretsEvent {
     environment: string;
     secretPath: string;
     numberOfSecrets: number;
+  };
+}
+
+interface CreateOrganizationEvent {
+  type: EventType.CREATE_ORGANIZATION;
+  metadata: {
+    organizationId: string;
+    name: string;
+    slug: string;
+    // False when the request matched an organization this identity had already created.
+    created: boolean;
+    adminIdentityId: string;
   };
 }
 
@@ -7816,6 +7829,7 @@ export type Event =
   | DeleteAlertEvent
   | TestAlertChannelEvent
   | CreateSubOrganizationEvent
+  | CreateOrganizationEvent
   | UpdateSubOrganizationEvent
   | DeleteSubOrganizationEvent
   | JoinSubOrganizationEvent

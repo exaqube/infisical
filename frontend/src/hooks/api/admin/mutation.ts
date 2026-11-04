@@ -151,6 +151,24 @@ export const useAdminRemoveIdentitySuperAdminAccess = () => {
   });
 };
 
+export const useAdminSetIdentityOrgCreatorAccess = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ identityId, canCreate }: { identityId: string; canCreate: boolean }) => {
+      const url = `/api/v1/admin/identity-management/identities/${identityId}/org-creator-access`;
+      if (canCreate) await apiRequest.put(url);
+      else await apiRequest.delete(url);
+
+      return {};
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: [adminStandaloneKeys.getIdentities]
+      });
+    }
+  });
+};
+
 export const useRemoveUserServerAdminAccess = () => {
   const queryClient = useQueryClient();
   return useMutation({

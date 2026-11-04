@@ -146,6 +146,7 @@ import { TOauthClientServiceFactory } from "@app/services/oauth-client/oauth-cli
 import { TOfflineUsageReportServiceFactory } from "@app/services/offline-usage-report/offline-usage-report-service";
 import { TOrgServiceFactory } from "@app/services/org/org-service";
 import { TOrgAdminServiceFactory } from "@app/services/org-admin/org-admin-service";
+import { TOrgCreatorServiceFactory } from "@app/services/org-creator/org-creator-service";
 import { TOrgProductStatsServiceFactory } from "@app/services/org-product-stats/org-product-stats-service";
 import { TPkiAlertServiceFactory } from "@app/services/pki-alert/pki-alert-service";
 import { TPkiAlertV2ServiceFactory } from "@app/services/pki-alert-v2/pki-alert-v2-service";
@@ -469,6 +470,7 @@ declare module "fastify" {
       role: TRoleServiceFactory;
       convertor: TConvertorServiceFactory;
       subOrganization: TSubOrgServiceFactory;
+      orgCreator: TOrgCreatorServiceFactory;
       pkiAlertV2: TPkiAlertV2ServiceFactory;
       approvalPolicy: TApprovalPolicyServiceFactory;
       appConnectionCredentialRotation: TAppConnectionCredentialRotationServiceFactory;

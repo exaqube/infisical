@@ -22,6 +22,7 @@ export type Identity = {
   createdAt: string;
   updatedAt: string;
   isInstanceAdmin?: boolean;
+  canCreateOrganizations?: boolean;
   orgId: string;
   projectId?: string | null;
   metadata?: { key: string; value: string; id: string }[];

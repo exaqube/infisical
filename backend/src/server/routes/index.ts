@@ -440,6 +440,7 @@ import { orgDALFactory } from "@app/services/org/org-dal";
 import { orgServiceFactory } from "@app/services/org/org-service";
 import { orgAdminServiceFactory } from "@app/services/org-admin/org-admin-service";
 import { orgAssetDALFactory } from "@app/services/org-asset/org-asset-dal";
+import { orgCreatorServiceFactory } from "@app/services/org-creator/org-creator-service";
 import { orgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
 import { orgProductStatsDALFactory } from "@app/services/org-product-stats/org-product-stats-dal";
 import { orgProductStatsServiceFactory } from "@app/services/org-product-stats/org-product-stats-service";
@@ -1611,6 +1612,17 @@ export const registerRoutes = async (
     membershipUserDAL,
     usageMeteringService,
     alertChannelRecipientDAL
+  });
+
+  const orgCreatorService = orgCreatorServiceFactory({
+    orgDAL,
+    orgService,
+    identityDAL,
+    membershipIdentityDAL,
+    membershipRoleDAL,
+    identityUaDAL,
+    identityUaClientSecretDAL,
+    superAdminService
   });
 
   const offlineUsageReportService = offlineUsageReportServiceFactory({
@@ -4239,6 +4251,7 @@ export const registerRoutes = async (
     permission: permissionService,
     org: orgService,
     subOrganization: subOrgService,
+    orgCreator: orgCreatorService,
     oidc: oidcService,
     authToken: tokenService,
     oauthClient: oauthClientService,
