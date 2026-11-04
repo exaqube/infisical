@@ -434,12 +434,15 @@ export const projectEnvServiceFactory = ({
     }
   };
 
-  const getEnvironmentById = async ({ actor, actorId, actorOrgId, actorAuthMethod, id }: TGetEnvDTO) => {
+  const getEnvironmentById = async ({ actor, actorId, actorOrgId, actorAuthMethod, id, projectId }: TGetEnvDTO) => {
     const environment = await projectEnvDAL.findById(id);
 
-    if (!environment) {
+    // A project-scoped route must never resolve an environment that belongs to another project.
+    if (!environment || (projectId && environment.projectId !== projectId)) {
       throw new NotFoundError({
-        message: `Environment with ID '${id}' not found`
+        message: projectId
+          ? `Environment with ID '${id}' in project with ID '${projectId}' not found`
+          : `Environment with ID '${id}' not found`
       });
     }
 
