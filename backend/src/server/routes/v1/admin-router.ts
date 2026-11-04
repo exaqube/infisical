@@ -24,6 +24,7 @@ import { verifySuperAdmin } from "@app/server/plugins/auth/superAdmin";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { RootKeyEncryptionStrategy } from "@app/services/kms/kms-types";
+import { assertNotOrgCreatorIdentity } from "@app/services/org-creator/org-creator-service";
 import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { CacheType, LoginMethod } from "@app/services/super-admin/super-admin-types";
@@ -363,6 +364,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       });
     },
     handler: async (req) => {
+      await assertNotOrgCreatorIdentity(req.auth);
       const organization = await server.services.superAdmin.deleteOrganization(req.params.organizationId);
 
       return {
@@ -391,7 +393,8 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
             id: true
           })
             .extend({
-              isInstanceAdmin: z.boolean()
+              isInstanceAdmin: z.boolean(),
+              canCreateOrganizations: z.boolean()
             })
             .array(),
           total: z.number()
@@ -945,6 +948,72 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       return {
         identity
       };
+    }
+  });
+
+  server.route({
+    method: "PUT",
+    url: "/identity-management/identities/:identityId/org-creator-access",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      operationId: "grantIdentityOrgCreatorAccess",
+      description:
+        "Allow a machine identity to create top-level organizations. It can create and list its organizations but never delete one.",
+      params: z.object({
+        identityId: z.string().uuid()
+      }),
+      response: {
+        200: z.object({
+          identity: IdentitiesSchema.pick({ name: true, id: true })
+        })
+      }
+    },
+    onRequest: (req, res, done) => {
+      verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN])(req, res, () => {
+        verifySuperAdmin(req, res, done);
+      });
+    },
+    handler: async (req) => {
+      const identity = await server.services.orgCreator.setOrgCreatorAccess(
+        req.params.identityId,
+        true,
+        req.permission.id
+      );
+      return { identity };
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/identity-management/identities/:identityId/org-creator-access",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      operationId: "revokeIdentityOrgCreatorAccess",
+      params: z.object({
+        identityId: z.string().uuid()
+      }),
+      response: {
+        200: z.object({
+          identity: IdentitiesSchema.pick({ name: true, id: true })
+        })
+      }
+    },
+    onRequest: (req, res, done) => {
+      verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN])(req, res, () => {
+        verifySuperAdmin(req, res, done);
+      });
+    },
+    handler: async (req) => {
+      const identity = await server.services.orgCreator.setOrgCreatorAccess(
+        req.params.identityId,
+        false,
+        req.permission.id
+      );
+      return { identity };
     }
   });
 

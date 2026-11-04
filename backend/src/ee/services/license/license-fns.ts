@@ -59,7 +59,8 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   dynamicSecret: false,
   memberLimit: null,
   identityLimit: null,
-  subOrganization: false,
+  // Fork: sub-organizations are not license-gated on self-hosted (see sub-org-service).
+  subOrganization: true,
   environmentLimit: null,
   environmentsUsed: 0,
   secretVersioning: true,

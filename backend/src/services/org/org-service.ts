@@ -689,10 +689,14 @@ export const orgServiceFactory = ({
     {
       userId,
       orgName,
+      slug,
+      createdByIdentityId,
       blockIfUserHasCreatedOrg
     }: {
       userId?: string;
       orgName: string;
+      slug?: string;
+      createdByIdentityId?: string;
       // Set by the user-facing create-org endpoint, and only on cloud.
       blockIfUserHasCreatedOrg?: boolean;
     },
@@ -724,7 +728,12 @@ export const orgServiceFactory = ({
 
       // akhilmhdh: for now this is auto created. in future we can input from user and for previous users just modifiy
       const org = await orgDAL.create(
-        { name: orgName, slug: slugify(`${orgName}-${alphaNumericNanoId(4)}`), createdByUserId: userId },
+        {
+          name: orgName,
+          slug: slug ?? slugify(`${orgName}-${alphaNumericNanoId(4)}`),
+          createdByUserId: userId,
+          createdByIdentityId
+        },
         tx
       );
       if (userId) {

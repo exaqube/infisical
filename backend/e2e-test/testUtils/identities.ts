@@ -53,7 +53,7 @@ export const createIdentityActor = async (dto: {
   });
   expect(loginRes.statusCode).toBe(200);
 
-  return { identityId, authToken: loginRes.json().accessToken as string };
+  return { identityId, clientSecret: clientSecret as string, authToken: loginRes.json().accessToken as string };
 };
 
 export const addIdentityToProject = async (dto: {
