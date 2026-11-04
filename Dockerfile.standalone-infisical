@@ -218,34 +218,34 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash \
     && test -n "$INFISICAL_CLI_VERSION" \
     && apt-get update && apt-get install -y infisical="$INFISICAL_CLI_VERSION" \
-    # Upgrade base-image packages that apt will not move on its own. Only packages
-    # preinstalled in the base belong here; anything pulled in as a dependency
-    # already installs at the candidate version. Re-check each release; a stale
-    # pin holds the vulnerable version, and a withdrawn one fails the build.
+    # Upgrade base-image packages that apt will not move on its own to the current
+    # candidate. Unpinned on purpose (exaqube fork): exact pins went stale as the
+    # base image moved ahead and made apt refuse the downgrade, failing the build.
+    # --only-upgrade never downgrades and never installs anything new.
     && apt-get install -y --only-upgrade \
-    libgnutls30t64=3.8.9-3+deb13u4 \
-    libc6=2.41-12+deb13u4 \
-    libc-bin=2.41-12+deb13u4 \
-    libssl3t64=3.5.7-1~deb13u2 \
-    dpkg=1.22.22 \
+    libgnutls30t64 \
+    libc6 \
+    libc-bin \
+    libssl3t64 \
+    dpkg \
     libcap2 \
-    libnghttp2-14=1.64.0-1.1+deb13u1 \
-    libngtcp2-16=1.11.0-1+deb13u1 \
-    libngtcp2-crypto-gnutls8=1.11.0-1+deb13u1 \
-    libsqlite3-0=3.46.1-7+deb13u2 \
-    util-linux=2.41.5-0+deb13u1 \
-    mount=2.41.5-0+deb13u1 \
-    libblkid1=2.41.5-0+deb13u1 \
-    libuuid1=2.41.5-0+deb13u1 \
-    libmount1=2.41.5-0+deb13u1 \
-    libsmartcols1=2.41.5-0+deb13u1 \
-    liblastlog2-2=2.41.5-0+deb13u1 \
-    bsdutils=1:2.41.5-0+deb13u1 \
-    login=1:4.16.0-2+really2.41.5-0+deb13u1 \
-    libsystemd0=257.13-1~deb13u1 \
-    libudev1=257.13-1~deb13u1 \
-    liblzma5=5.8.1-1+deb13u1 \
-    sed=4.9-2+deb13u1 \
+    libnghttp2-14 \
+    libngtcp2-16 \
+    libngtcp2-crypto-gnutls8 \
+    libsqlite3-0 \
+    util-linux \
+    mount \
+    libblkid1 \
+    libuuid1 \
+    libmount1 \
+    libsmartcols1 \
+    liblastlog2-2 \
+    bsdutils \
+    login \
+    libsystemd0 \
+    libudev1 \
+    liblzma5 \
+    sed \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy Oracle Instant Client from parallel stage
