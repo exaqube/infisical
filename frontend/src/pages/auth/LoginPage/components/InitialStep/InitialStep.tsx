@@ -2,6 +2,7 @@ import { Fragment, ReactNode, useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { faGithub, faGitlab, faGoogle } from "@fortawesome/free-brands-svg-icons";
+import { faKey } from "@fortawesome/free-solid-svg-icons";
 import HCaptcha from "@hcaptcha/react-hcaptcha";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, useNavigate } from "@tanstack/react-router";
@@ -187,6 +188,17 @@ export const InitialStep = ({ isAdmin }: Props) => {
     window.location.replace(`/api/v1/sso/redirect/${method}${qs ? `?${qs}` : ""}`);
   };
 
+  // exaqube fork: instance-wide OIDC login. Not saved as "last login": the OIDC last-login entry
+  // means the per-organization flow, which would send a returning user to /login/oidc.
+  const handleOidcLogin = () => {
+    preserveHubSpotUtk();
+    const searchParams = new URLSearchParams();
+    if (callbackPort) searchParams.append("callback_port", callbackPort);
+    if (isAdmin) searchParams.append("is_admin_login", "true");
+    const qs = searchParams.toString();
+    window.location.replace(`/api/v1/sso/redirect/oidc-login${qs ? `?${qs}` : ""}`);
+  };
+
   const isLastUsedMethod = (method: LoginMethod) => lastLogin?.method === method;
 
   const shouldDisplayLoginMethod = (method: LoginMethod) =>
@@ -227,7 +239,27 @@ export const InitialStep = ({ isAdmin }: Props) => {
         />
       )
     })),
+    ...(config.oidcLoginLabel && shouldDisplayLoginMethod(LoginMethod.OIDC)
+      ? [
+          {
+            id: "oidc-login",
+            kind: "social" as const,
+            isLastUsed: false,
+            render: (showLastUsed: boolean, showLabel = false) => (
+              <SocialLoginButton
+                icon={faKey}
+                label={`Continue with ${config.oidcLoginLabel}`}
+                onClick={handleOidcLogin}
+                showLabel={showLabel}
+                showLastUsed={showLastUsed}
+              />
+            )
+          }
+        ]
+      : []),
     ...([LoginMethod.LDAP, LoginMethod.OIDC, LoginMethod.SAML] as const)
+      // the instance-wide OIDC login replaces the per-organization OIDC button
+      .filter((method) => !(method === LoginMethod.OIDC && config.oidcLoginLabel))
       .filter(shouldDisplayLoginMethod)
       .map((method) => ({
         id: method,

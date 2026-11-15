@@ -414,6 +414,11 @@ const envSchema = z
         .optional()
         .default(process.env.URL_GITLAB_LOGIN ?? GITLAB_URL)
     ), // fallback since URL_GITLAB_LOGIN has been renamed
+    // exaqube fork: instance-wide "Continue with SSO" via one OIDC provider (lib/requests/oidc-login.ts)
+    OIDC_LOGIN_ISSUER: zpStr(z.string().url().optional()),
+    CLIENT_ID_OIDC_LOGIN: zpStr(z.string().optional()),
+    CLIENT_SECRET_OIDC_LOGIN: zpStr(z.string().optional()),
+    OIDC_LOGIN_LABEL: zpStr(z.string().optional().default("SSO")),
     DEFAULT_SAML_ORG_SLUG: zpStr(z.string().optional()).default(process.env.NEXT_PUBLIC_SAML_ORG_SLUG),
     // integration client secrets
     // heroku

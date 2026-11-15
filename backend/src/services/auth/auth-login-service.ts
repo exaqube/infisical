@@ -778,6 +778,8 @@ export const authLoginServiceFactory = ({
         return UserAliasType.GITHUB;
       case AuthMethod.GITLAB:
         return UserAliasType.GITLAB;
+      case AuthMethod.OIDC: // exaqube fork: instance-wide OIDC login (sso-router /oidc-login)
+        return UserAliasType.OIDC;
       default:
         throw new BadRequestError({ message: `Unsupported OAuth auth method: ${method}` });
     }

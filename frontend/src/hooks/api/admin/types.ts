@@ -88,6 +88,8 @@ export type TServerConfig = {
   isClickhouseAuditLogEnabled?: boolean;
   // populated on self-hosted instances when a newer release than the running version exists
   latestAvailableVersion?: string | null;
+  // exaqube fork: label of the instance-wide OIDC login button; null/absent when not configured
+  oidcLoginLabel?: string | null;
   // Super admin-only fields (omitted for non-super-admin callers)
   instanceId?: string;
   createdAt?: string;
