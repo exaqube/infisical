@@ -23,6 +23,11 @@ const oauthLoginMethods = {
   [AuthMethod.GITLAB]: {
     loginMethod: LoginMethod.GITLAB,
     disabledMessage: "Login with Gitlab is disabled by administrator."
+  },
+  // exaqube fork: instance-wide OIDC login (env OIDC_LOGIN_*), toggled with the OIDC login method
+  [AuthMethod.OIDC]: {
+    loginMethod: LoginMethod.OIDC,
+    disabledMessage: "Login with SSO is disabled by administrator."
   }
 } as const;
 

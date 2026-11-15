@@ -14,6 +14,7 @@ import { ENCRYPTION_KEY_ROTATION } from "@app/lib/api-docs";
 import { getConfig, overridableKeys } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
+import { getCachedOidcLoginMetadata } from "@app/lib/requests/oidc-login";
 import { AllowedEmailDomainsSchema } from "@app/lib/validator";
 import { PASSWORD_POLICY, PasswordPolicyConfigSchema, PasswordPolicySchema } from "@app/lib/validator/password-policy";
 import { invalidateCacheLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -47,6 +48,8 @@ const SanitizedSuperAdminSchema = z.object({
   pageFrameContent: z.string().nullable().optional(),
   // Populated on self-hosted instances when a newer release than the running version exists
   latestAvailableVersion: z.string().nullable().optional(),
+  // exaqube fork: label of the instance-wide OIDC login button; null when it isn't configured
+  oidcLoginLabel: z.string().nullable().optional(),
   // Super admin-only fields (omitted for non-super-admin callers)
   instanceId: z.string().uuid().optional(),
   createdAt: z.date().optional(),
@@ -96,6 +99,8 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       const isClickhouseAuditLogEnabled = Boolean(
         serverEnvs.isClickHouseConfigured && serverEnvs.CLICKHOUSE_AUDIT_LOG_ENABLED
       );
+      const oidcLoginLabel =
+        getCachedOidcLoginMetadata() && serverEnvs.CLIENT_ID_OIDC_LOGIN ? serverEnvs.OIDC_LOGIN_LABEL : null;
 
       if (!isSuperAdminUser) {
         // Only return fields the frontend needs before authentication
@@ -115,7 +120,8 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
             pageFrameContent: config.pageFrameContent,
             isPublicSecretSharingDisabled: serverEnvs.DISABLE_PUBLIC_SECRET_SHARING,
             isClickhouseAuditLogEnabled,
-            latestAvailableVersion
+            latestAvailableVersion,
+            oidcLoginLabel
           }
         };
       }
@@ -132,7 +138,8 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
           paramsFolderSecretDetectionEnabled: serverEnvs.PARAMS_FOLDER_SECRET_DETECTION_ENABLED,
           isOfflineUsageReportsEnabled: hasOfflineLicense,
           isClickhouseAuditLogEnabled,
-          latestAvailableVersion
+          latestAvailableVersion,
+          oidcLoginLabel
         }
       };
     }

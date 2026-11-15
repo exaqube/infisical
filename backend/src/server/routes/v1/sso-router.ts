@@ -24,6 +24,13 @@ import { ms } from "@app/lib/ms";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { fetchGithubEmails, fetchGithubUser, selectGithubLoginEmail } from "@app/lib/requests/github";
 import {
+  discoverOidcLoginMetadata,
+  fetchOidcUserInfo,
+  getCachedOidcLoginMetadata,
+  mapOidcUserInfo,
+  TOidcLoginMetadata
+} from "@app/lib/requests/oidc-login";
+import {
   AuthAttemptAuthMethod,
   AuthAttemptAuthResult,
   authAttemptCounter,
@@ -289,6 +296,75 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
         }
       )
     );
+  }
+
+  // exaqube fork: instance-wide OIDC login ("Continue with SSO"), see lib/requests/oidc-login.ts.
+  // Endpoints come from discovery; until that succeeds (it retries on every config refresh) the
+  // strategy is simply not registered and /redirect/oidc-login answers 400.
+  const isOidcLoginActive = Boolean(
+    appCfg.OIDC_LOGIN_ISSUER && appCfg.CLIENT_ID_OIDC_LOGIN && appCfg.CLIENT_SECRET_OIDC_LOGIN
+  );
+  if (isOidcLoginActive) {
+    const useOidcLoginStrategy = (metadata: TOidcLoginMetadata) => {
+      passport.use(
+        "oidc-login",
+        new OAuth2Strategy(
+          {
+            authorizationURL: metadata.authorization_endpoint,
+            tokenURL: metadata.token_endpoint,
+            clientID: appCfg.CLIENT_ID_OIDC_LOGIN!,
+            clientSecret: appCfg.CLIENT_SECRET_OIDC_LOGIN!,
+            callbackURL: `${appCfg.SITE_URL}/api/v1/sso/oidc-login`,
+            scope: ["openid", "email", "profile"],
+            state: true,
+            pkce: true,
+            passReqToCallback: true
+          },
+          // eslint-disable-next-line
+          async (req: any, accessToken: string, _refreshToken: string, _profile: any, done: Function) => {
+            const authMetricStartTime = performance.now();
+            try {
+              const mapped = mapOidcUserInfo(await fetchOidcUserInfo(metadata.userinfo_endpoint, accessToken));
+              if (!mapped) throw new BadRequestError({ message: "SSO provider returned no subject or email" });
+
+              const loginResult = await server.services.login.oauth2Login({
+                ...mapped,
+                authMethod: AuthMethod.OIDC,
+                callbackPort: req.session.get("callbackPort"),
+                ip: requestContext.get("ip") || "",
+                userAgent: requestContext.get("userAgent") || ""
+              });
+
+              recordAuthAttemptMetric({
+                startTime: authMetricStartTime,
+                method: AuthAttemptAuthMethod.OIDC,
+                result: AuthAttemptAuthResult.SUCCESS,
+                orgId: loginResult.orgId
+              });
+              return done(null, loginResult);
+            } catch (error) {
+              recordAuthAttemptMetric({
+                startTime: authMetricStartTime,
+                method: AuthAttemptAuthMethod.OIDC,
+                result: AuthAttemptAuthResult.FAILURE,
+                error
+              });
+              logger.error(error, "OIDC login failed");
+              return done(error as Error, false);
+            }
+          }
+        )
+      );
+    };
+
+    const cached = getCachedOidcLoginMetadata();
+    if (cached) {
+      useOidcLoginStrategy(cached);
+    } else {
+      void discoverOidcLoginMetadata(appCfg.OIDC_LOGIN_ISSUER!)
+        .then(useOidcLoginStrategy)
+        .catch((err) => logger.error(err, "OIDC login: discovery failed, will retry on the next config refresh"));
+    }
   }
 
   // passport strategy for gitlab
@@ -738,6 +814,66 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
             session: false,
             failureRedirect: "/login/provider/error",
             callbackURL: getOAuthCallbackUrl(req, "/api/v1/sso/gitlab") || `${appCfg.SITE_URL}/api/v1/sso/gitlab`,
+            authInfo: false
+          } as any) as any
+        )(req, res);
+      }
+    ],
+    handler: handleOAuthCallbackRedirect
+  });
+
+  // exaqube fork: instance-wide OIDC login
+  server.route({
+    url: "/redirect/oidc-login",
+    method: "GET",
+    schema: {
+      operationId: "redirectOidcLogin",
+      querystring: z.object({
+        callback_port: z.string().optional(),
+        is_admin_login: z
+          .string()
+          .optional()
+          .transform((val) => val === "true")
+      })
+    },
+    preValidation: [
+      async (req, res) => {
+        if (!getCachedOidcLoginMetadata() || !appCfg.CLIENT_ID_OIDC_LOGIN) {
+          throw new BadRequestError({ message: "SSO login is not configured on this instance" });
+        }
+        const { callback_port: callbackPort, is_admin_login: isAdminLogin } = req.query as {
+          callback_port?: string;
+          is_admin_login?: boolean;
+        };
+        // ensure fresh session state per login attempt
+        await req.session.regenerate();
+        if (callbackPort) req.session.set("callbackPort", callbackPort);
+        if (isAdminLogin) req.session.set("isAdminLogin", isAdminLogin);
+
+        return (
+          passport.authenticate("oidc-login", {
+            session: false,
+            callbackURL:
+              getOAuthCallbackUrl(req, "/api/v1/sso/oidc-login") || `${appCfg.SITE_URL}/api/v1/sso/oidc-login`,
+            authInfo: false
+          } as any) as any
+        )(req, res);
+      }
+    ],
+    handler: () => {}
+  });
+
+  server.route({
+    url: "/oidc-login",
+    method: "GET",
+    preValidation: [
+      async (req: any, res: any) => {
+        return (
+          passport.authenticate("oidc-login", {
+            session: false,
+            failureRedirect: "/login/provider/error",
+            callbackURL:
+              getOAuthCallbackUrl(req, "/api/v1/sso/oidc-login") || `${appCfg.SITE_URL}/api/v1/sso/oidc-login`,
             authInfo: false
           } as any) as any
         )(req, res);
